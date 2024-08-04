@@ -1,0 +1,39 @@
+<Cameras>
+	<Camera name='cam1' input_frame_rate=50 output_frame_rate=50>
+		<input_path>data/head-pose-face-detection-female-and-male.mp4</input_path>
+		<FRMode Enrol='true' Recognize='true'>
+		</FRMode>
+		<DemographicMode AgeGender='True' Emotion='False'>
+		</DemographicMode>
+	</Camera>
+	<Camera1 name='cam2' input_frame_rate=30 output_frame_rate=15>
+		<input_path>data/head-pose-face-detection-female-and-male.mp4</input_path>
+		<input_path1>rtsp://127.0.0.1:8554/stream1</input_path1>
+		<FRMode Enrol='false' Recognize='true'>
+		</FRMode>
+		<DemographicMode AgeGender='False' Emotion='True'>
+		</DemographicMode>
+	</Camera1>
+	<Camera name='cam3' input_frame_rate=30 output_frame_rate=30>
+		<input_path>/home/prateek/Downloads/A1_num.mp4</input_path>
+		<input_path>rtsp://127.0.0.1:8554/stream1</input_path>
+		<FRMode Enrol='true' Recognize='true'>
+		</FRMode>
+		<DemographicMode AgeGender='False' Emotion='True'>
+		</DemographicMode>
+	</Camera>
+	<Camera1 name='cam4'>
+		<input_path>/home/prateek/Downloads/A2.mp4</input_path>
+		<FRMode Enrol='true' Recognize='true'>
+		</FRMode>
+		<DemographicMode AgeGender='True' Emotion='False'>
+		</DemographicMode>
+	</Camera1>
+	<Camera1 name='cam5'>
+		<input_path>/home/prateek/Downloads/A5.mp4</input_path>
+		<FRMode Enrol='true' Recognize='true'>
+		</FRMode>
+		<DemographicMode AgeGender='False' Emotion='True'>
+		</DemographicMode>
+	</Camera1>
+</Cameras>

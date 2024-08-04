@@ -16,11 +16,11 @@ The **Prototypes** repository is a collection of self-contained experiments and 
    ```
 ### Contributing
 
-    Fork the repository.
-    Create a new folder for your prototype.
-    Implement your idea, ensuring it is self-contained.
-    Submit a pull request with a brief description of your prototype.
+- Fork the repository.
+- Create a new folder for your prototype.
+- Implement your idea, ensuring it is self-contained.
+- Submit a pull request with a brief description of your prototype.
 
 ### License
 
-    This project is licensed under the MIT License. See the LICENSE file for details.
+This project is licensed under the MIT License. See the LICENSE file for details.
