@@ -39,7 +39,7 @@ Before running the benchmarks, ensure you have MySQL and Go installed on your sy
 1. **Fetch Go Modules**: Navigate to your project directory where your Go files are located and initialize the modules:
 
     ```bash
-    go mod init yourmodule
+    go mod init pool-mod
     go get -u github.com/go-sql-driver/mysql
     ```
 
