@@ -18,21 +18,20 @@ Before running the benchmarks, ensure you have MySQL and Go installed on your sy
 
 2. **Configure MySQL**:
 
-    - Log in to MySQL as root:
+    ```bash
+    sudo mysql
 
-      ```bash
-      sudo mysql
-      ```
+    CREATE DATABASE prototype_test_db;
+    CREATE USER 'testuser'@'localhost' IDENTIFIED BY 'Password123!';
+    GRANT ALL PRIVILEGES ON prototype_test_db.* TO 'testuser'@'localhost';
+    FLUSH PRIVILEGES;
+    EXIT;
+    ```
 
-    - Create a database and user for the benchmarks:
-
-      ```sql
-      CREATE DATABASE prototype_test_db;
-      CREATE USER 'testuser'@'localhost' IDENTIFIED BY 'Password123!';
-      GRANT ALL PRIVILEGES ON prototype_test_db.* TO 'testuser'@'localhost';
-      FLUSH PRIVILEGES;
-      EXIT;
-      ```
+    Or do:
+    ```
+    sudo mysql -u root -p < setup_database.sql
+    ```
 
 ### Setup Go Environment
 
