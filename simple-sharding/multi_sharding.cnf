@@ -1,0 +1,35 @@
+[mysqld_multi]
+mysqld = /usr/bin/mysqld_safe
+mysqladmin = /usr/bin/mysqladmin
+user = multi_admin
+password = multipass
+
+[mysqld1]
+socket=/var/run/mysqld/master-server.sock
+pid-file=/var/run/mysqld/master-server.pid
+datadir=/opt/mysql-servers/master-server
+port=3307
+server-id=1
+log_bin=mysql-bin
+binlog_do_db=sharding_prototype_test_db
+
+[mysqld2]
+socket=/var/run/mysqld/replica-server-1.sock
+pid-file=/var/run/mysqld/replica-server-1.pid
+datadir=/opt/mysql-servers/replica-server-1
+port=3308
+server-id=2
+relay-log=mysql-relay-bin
+log_bin=mysql-bin
+binlog_do_db=sharding_prototype_test_db
+
+[mysqld3]
+socket=/var/run/mysqld/replica-server-2.sock
+pid-file=/var/run/mysqld/replica-server-2.pid
+datadir=/opt/mysql-servers/replica-server-2
+port=3309
+server-id=3
+relay-log=mysql-relay-bin
+log_bin=mysql-bin
+binlog_do_db=sharding_prototype_test_db
+
