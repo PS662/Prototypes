@@ -41,6 +41,7 @@ We will use scripts located in the `sql_scripts/` directory to set up and config
 Run the following command to set up your MySQL servers:
 
 ```bash
+# I have also created the tables at the base sql 3306 (write happens at both), the follwoing are additional, so in total 4 DB servers.
 ./sql_scripts/setup_mysql.sh <database-name> <root-dir>
 
 # I did these, sometimes AppArmor prevents you from using /home (I did not look into it much):

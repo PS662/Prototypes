@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -35,10 +36,16 @@ func InitConnections() *DatabaseConnections {
 	}
 	dbConns.Connections = append(dbConns.Connections, replica2DB)
 
+	baseSQL, err := sql.Open("mysql", "testuser:Password123!@tcp(localhost:3306)/prototype_test_db?parseTime=true")
+	if err != nil {
+		log.Fatal("Error connecting to base SQL:", err)
+	}
+	dbConns.Connections = append(dbConns.Connections, baseSQL)
+
 	return dbConns
 }
 
-func (d *DatabaseConnections) shardIndex(userID int) *sql.DB {
+func (d *DatabaseConnections) getReadDBIndex(userID int) *sql.DB {
 	if userID%2 == 0 {
 		return d.Connections[1] // Replica-1
 	} else if userID%3 == 0 {
@@ -56,7 +63,7 @@ func getHeartbeat(d *DatabaseConnections) gin.HandlerFunc {
 			return
 		}
 
-		db := d.shardIndex(userID)
+		db := d.getReadDBIndex(userID)
 		row := db.QueryRow("SELECT last_heartbeat FROM pulse WHERE id = ?", userID)
 		var lastHeartbeat sql.NullTime
 		err = row.Scan(&lastHeartbeat)
@@ -76,6 +83,13 @@ func getHeartbeat(d *DatabaseConnections) gin.HandlerFunc {
 	}
 }
 
+func (d *DatabaseConnections) getWriteShardIndex(userID int) []*sql.DB {
+	if userID%2 == 0 {
+		return []*sql.DB{d.Connections[0], d.Connections[3]}
+	}
+	return []*sql.DB{d.Connections[0]}
+}
+
 func populateDB(d *DatabaseConnections) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		numRecordsStr := c.Param("num_records")
@@ -85,12 +99,15 @@ func populateDB(d *DatabaseConnections) gin.HandlerFunc {
 			return
 		}
 
-		db := d.Connections[0]
 		for i := 0; i < numRecords; i++ {
-			_, err := db.Exec("INSERT INTO pulse (last_heartbeat) VALUES (NOW())")
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error populating database"})
-				return
+			dbs := d.getWriteShardIndex(i) // Get the appropriate databases for this index
+			for _, db := range dbs {
+				_, err := db.Exec("INSERT INTO pulse (last_heartbeat) VALUES (NOW())")
+				if err != nil {
+					log.Printf("Error populating database for record %d: %v", i, err)
+					c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Error populating database for record %d", i)})
+					return
+				}
 			}
 		}
 

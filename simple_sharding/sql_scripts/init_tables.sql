@@ -1,4 +1,4 @@
-USE prototype_test_db;
+USE sharding_prototype_test_db;
 
 CREATE TABLE pulse (
     id INT AUTO_INCREMENT PRIMARY KEY,
