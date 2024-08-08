@@ -73,8 +73,6 @@ Replication is set up manually on each server. Follow these steps for both maste
 ### Master Configuration
 
 ```
-
-
 CREATE USER 'repl'@'%' IDENTIFIED BY 'password';
 GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%';
 FLUSH PRIVILEGES;
