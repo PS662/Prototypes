@@ -1,10 +1,49 @@
-1 - Install openvino 2021.2 (Any version with DLStreamer should work ideally)
-2 - Set up openvino environment
-3 - Run	./build.sh
-4 - Run ./build/social_distancing_app -i data/pedestrian.mp4 or "path to your video"
-5 - Parameters like human height, focal length, distance threshold, model path are configurable from command line. Run ./build/social_distancing_app -h to get detailed info. [I have assumed humand height as 160 cm, distance as 6 feet and focal length as 700]
+# Social Distancing Application
 
-Few BUGS:
-1 - I have not checked the object type for detection network so at the end you can see  the alarm between vehicle and person, but if we use pure person detection model then this would not be the case. [Did not do so as the label could change with different networks].
-2 - Have just implemented basic functionality, not very much comments and OOP style. But have made it a bit modular so that it can be refactored very easily in any design.
-3 - For starting point I have used the sample code from DLStreamer itself. [Not a bug, but thought should be disclosed].
+## Installation and Setup
+
+1. **Install OpenVINO 2021.2**  
+   Any version with DLStreamer should ideally work.
+
+2. **Set up OpenVINO environment**
+
+3. **Build the Application**
+   ```bash
+   ./build.sh
+
+4. **Run the Application**
+
+    ```
+   ./build/social_distancing_app -i data/pedestrian.mp4
+
+    # or 
+   
+   ./build/social_distancing_app -i "path to your video"
+    ```
+
+5. **Configuration Parameters**
+
+    Human height
+    Focal length
+    Distance threshold
+    Model path
+
+These parameters are configurable from the command line. Run the following command to get detailed information:
+
+```
+./build/social_distancing_app -h
+```
+
+Default assumptions: Human height: 160 cm, Distance threshold: 6 feet, Focal length: 700.
+
+
+## Known Bugs and Limitations
+
+- Object Type Detection
+    - The application does not check the object type for the detection network. As a result, you might see alarms between vehicles and persons. Using a pure person detection model will eliminate this issue. The label might change with different networks, so this was not implemented.
+
+- Basic Functionality Implementation
+    - The current implementation is basic, with limited comments and OOP style. However, it is somewhat modular, making it easy to refactor into any design.
+
+- Starting Point
+    - The initial code was taken from DLStreamer samples. This is not a bug but is disclosed for transparency.
