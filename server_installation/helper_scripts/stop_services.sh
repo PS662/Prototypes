@@ -15,14 +15,37 @@ stop_service() {
         log "Stopping $SERVICE..."
         sudo systemctl stop $SYSTEMCTL_NAME
         log "$SERVICE stopped."
+    elif [[ $SERVICE == "Zookeeper" ]]; then
+        log "$SERVICE is not running via systemctl. Attempting to stop manually..."
+        sudo pkill -f "org.apache.zookeeper.server.quorum.QuorumPeerMain"
+        if pgrep -f "org.apache.zookeeper.server.quorum.QuorumPeerMain" > /dev/null; then
+            log "$SERVICE process could not be killed."
+        else
+            log "$SERVICE process killed."
+        fi
     else
         log "$SERVICE is not running."
     fi
 }
 
 case "$1" in
-    rabbitmq|postgresql|redis|kafka|zookeeper|mysql)
-        stop_service $1 $1
+    rabbitmq)
+        stop_service "RabbitMQ" "rabbitmq-server"
+        ;;
+    postgresql)
+        stop_service "PostgreSQL" "postgresql"
+        ;;
+    redis)
+        stop_service "Redis" "redis-server"
+        ;;
+    kafka)
+        stop_service "Kafka" "kafka"
+        ;;
+    zookeeper)
+        stop_service "Zookeeper" "zookeeper"
+        ;;
+    mysql)
+        stop_service "MySQL" "mysql"
         ;;
     "")
         log "Stopping all services..."

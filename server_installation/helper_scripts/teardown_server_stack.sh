@@ -27,6 +27,17 @@ uninstall_docker() {
     fi
 }
 
+# Function to uninstall Docker Compose
+uninstall_docker_compose() {
+    if docker compose version &> /dev/null; then
+        log "Uninstalling Docker Compose..."
+        sudo apt-get remove docker-compose-plugin -y
+        log "Docker Compose uninstalled successfully."
+    else
+        log "Docker Compose is not installed. Skipping uninstallation."
+    fi
+}
+
 # Function to uninstall RabbitMQ
 uninstall_rabbitmq() {
     if dpkg -l | grep -q rabbitmq-server; then
@@ -146,6 +157,9 @@ else
         case $service in
             docker)
                 uninstall_docker
+                ;;
+            docker-compose)
+                uninstall_docker_compose
                 ;;
             rabbitmq)
                 uninstall_rabbitmq

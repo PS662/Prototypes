@@ -49,6 +49,18 @@ install_docker() {
     fi
 }
 
+# Function to install Docker Compose separately if needed
+install_docker_compose() {
+    if ! docker compose version &> /dev/null; then
+        log "Docker Compose is not installed. Installing Docker Compose..."
+        sudo apt-get install docker-compose-plugin -y
+        docker compose version
+        log "Docker Compose installed successfully."
+    else
+        log "Docker Compose is already installed. Skipping installation."
+    fi
+}
+
 # Function to install RabbitMQ
 install_rabbitmq() {
     if ! dpkg -l | grep -q rabbitmq-server; then
@@ -220,6 +232,9 @@ else
         case $service in
             docker)
                 install_docker
+                ;;
+            docker-compose)
+                install_docker_compose
                 ;;
             rabbitmq)
                 install_rabbitmq

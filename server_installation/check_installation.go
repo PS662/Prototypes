@@ -23,7 +23,11 @@ const (
 
 func main() {
 	// RabbitMQ
-	rabbitmqURL := getEnv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
+	rabbitmqHost := getEnv("RABBITMQ_HOST", "localhost")
+	rabbitmqPort := getEnv("RABBITMQ_PORT", "5672")
+	rabbitmqUser := getEnv("RABBITMQ_USER", "guest")
+	rabbitmqPass := getEnv("RABBITMQ_PASS", "guest")
+	rabbitmqURL := fmt.Sprintf("amqp://%s:%s@%s:%s/", rabbitmqUser, rabbitmqPass, rabbitmqHost, rabbitmqPort)
 	checkRabbitMQ(rabbitmqURL)
 
 	// PostgreSQL
@@ -36,11 +40,15 @@ func main() {
 	checkPostgres(postgresHost, postgresPort, postgresUser, postgresPassword, postgresDBName, postgresSSLMode)
 
 	// Redis
-	redisAddress := getEnv("REDIS_ADDRESS", "localhost:6379")
+	redisHost := getEnv("REDIS_HOST", "localhost")
+	redisPort := getEnv("REDIS_PORT", "6379")
+	redisAddress := fmt.Sprintf("%s:%s", redisHost, redisPort)
 	checkRedis(redisAddress)
 
 	// Kafka
-	kafkaBroker := getEnv("KAFKA_BROKER", "localhost:9092")
+	kafkaHost := getEnv("KAFKA_BROKER", "localhost")
+	kafkaPort := getEnv("KAFKA_PORT", "9092")
+	kafkaBroker := fmt.Sprintf("%s:%s", kafkaHost, kafkaPort)
 	kafkaTopic := getEnv("KAFKA_TOPIC", "test-topic")
 	checkKafka(kafkaBroker, kafkaTopic)
 
