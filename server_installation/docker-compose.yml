@@ -7,6 +7,10 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER}"
       RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASS}"
+    restart: unless-stopped
+    networks:
+      default_service_check_network:
+        ipv4_address: 172.19.0.2
 
   postgres:
     image: "postgres:14"
@@ -16,11 +20,19 @@ services:
       POSTGRES_USER: "${POSTGRES_USER}"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
       POSTGRES_DB: "${POSTGRES_DB}"
+    restart: unless-stopped
+    networks:
+      default_service_check_network:
+        ipv4_address: 172.19.0.3
 
   redis:
     image: "redis:6"
     ports:
       - "${REDIS_PORT}:6379"
+    restart: unless-stopped
+    networks:
+      default_service_check_network:
+        ipv4_address: 172.19.0.4
 
   zookeeper:
     image: "confluentinc/cp-zookeeper:7.3.0"
@@ -29,6 +41,10 @@ services:
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
+    restart: unless-stopped
+    networks:
+      default_service_check_network:
+        ipv4_address: 172.19.0.5
 
   kafka:
     image: "confluentinc/cp-kafka:7.3.0"
@@ -36,7 +52,7 @@ services:
       - "${KAFKA_PORT}:9092"
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
+      KAFKA_ZOOKEEPER_CONNECT: "172.19.0.5:2181"
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:${KAFKA_PORT}
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:${KAFKA_PORT}
@@ -44,6 +60,10 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_MESSAGE_MAX_BYTES: 20000000
       KAFKA_REPLICA_FETCH_MAX_BYTES: 20000000
+    restart: unless-stopped
+    networks:
+      default_service_check_network:
+        ipv4_address: 172.19.0.6
 
   mysql:
     image: "mysql:8.0"
@@ -54,3 +74,15 @@ services:
       MYSQL_DATABASE: "${MYSQL_DB}"
       MYSQL_USER: "${MYSQL_USER}"
       MYSQL_PASSWORD: "${MYSQL_PASSWORD}"
+    restart: unless-stopped
+    networks:
+      default_service_check_network:
+        ipv4_address: 172.19.0.7
+
+networks:
+  default_service_check_network:
+    name: default_service_check_network
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.19.0.0/16

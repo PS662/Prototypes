@@ -46,7 +46,7 @@ func main() {
 	checkRedis(redisAddress)
 
 	// Kafka
-	kafkaHost := getEnv("KAFKA_BROKER", "localhost")
+	kafkaHost := getEnv("KAFKA_HOST", "localhost")
 	kafkaPort := getEnv("KAFKA_PORT", "9092")
 	kafkaBroker := fmt.Sprintf("%s:%s", kafkaHost, kafkaPort)
 	kafkaTopic := getEnv("KAFKA_TOPIC", "test-topic")
