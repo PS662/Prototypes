@@ -1,0 +1,11 @@
+# Ignore all binaries (executables with no extension)
+*
+
+!.gitignore
+!*.cpp
+!*.h
+!*.hpp
+
+!*.sh
+!Makefile
+!*.md
