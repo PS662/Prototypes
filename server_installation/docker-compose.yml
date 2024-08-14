@@ -11,6 +11,7 @@ services:
     networks:
       default_service_check_network:
         ipv4_address: 172.19.0.2
+    mem_limit: 1g
 
   postgres:
     image: "postgres:14"
@@ -39,7 +40,7 @@ services:
     hostname: zoo1
     container_name: zoo1
     ports:
-      - "2181:2181"
+      - "${ZOOKEEPER_PORT}:2181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_SERVER_ID: 1
@@ -54,7 +55,7 @@ services:
     hostname: kafka1
     container_name: kafka1
     ports:
-      - "9092:9092"
+      - "${KAFKA_PORT}:9092"
       - "29092:29092"
       - "9999:9999"
     environment:

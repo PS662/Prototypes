@@ -7,10 +7,12 @@ import (
 	"log"
 	"net"
 	"os"
+	"time"
 
 	"github.com/go-redis/redis/v8"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq" // Import the PostgreSQL driver
+	"github.com/samuel/go-zookeeper/zk"
 	"github.com/segmentio/kafka-go"
 	"github.com/streadway/amqp"
 )
@@ -49,6 +51,7 @@ func main() {
 	kafkaHost := getEnv("KAFKA_HOST", "localhost")
 	kafkaPort := getEnv("KAFKA_PORT", "9092")
 	kafkaBroker := fmt.Sprintf("%s:%s", kafkaHost, kafkaPort)
+	fmt.Printf("Connecting to Kafka at %s\n", kafkaBroker)
 	kafkaTopic := getEnv("KAFKA_TOPIC", "test-topic")
 	checkKafka(kafkaBroker, kafkaTopic)
 
@@ -144,11 +147,18 @@ func checkMySQL(host, port, user, password, dbname string) {
 
 func checkZookeeper(host, port string) {
 	address := net.JoinHostPort(host, port)
-	conn, err := net.Dial("tcp", address)
+	conn, _, err := zk.Connect([]string{address}, time.Second*5)
 	if err != nil {
 		log.Printf("%sZookeeper connection failed: %v%s", red, err, reset)
+		return
+	}
+	defer conn.Close()
+
+	// Perform a simple operation, like checking the status of the root path
+	_, _, err = conn.Exists("/")
+	if err != nil {
+		log.Printf("%sZookeeper operation failed: %v%s", red, err, reset)
 	} else {
-		defer conn.Close()
 		log.Printf("%sZookeeper is up and running%s", green, reset)
 	}
 }
