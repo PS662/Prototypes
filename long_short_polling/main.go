@@ -86,7 +86,7 @@ func main() {
 
 	r.GET("/long/status/:server_id", func(c *gin.Context) {
 		serverID := c.Param("server_id")
-		currentStatus := c.DefaultQuery("status", "DONE")
+		clientStatus := c.DefaultQuery("status", "DONE")
 
 		var status string
 
@@ -97,9 +97,9 @@ func main() {
 				return
 			}
 
-			fmt.Println("Client status: ", currentStatus, "Server status: ", status)
+			fmt.Println("Client status: ", clientStatus, "Server status: ", status)
 
-			if status == currentStatus || status == "DONE" {
+			if status == clientStatus || status == "DONE" {
 				break
 			}
 
