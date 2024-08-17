@@ -1,9 +1,9 @@
 
-# Server Installation Project
+# Server Installation
 
-## Project Overview
+## Overview
 
-This project is designed to automate the setup, management, and teardown of various server components, including RabbitMQ, PostgreSQL, Redis, Kafka, Zookeeper, and MySQL. The project includes Docker Compose configurations and helper scripts to simplify server management.
+This repo is designed to automate the setup, management, and teardown of various server components, including RabbitMQ, PostgreSQL, Redis, Kafka, Zookeeper, and MySQL. This includes Docker Compose configurations and helper scripts to simplify server management.
 
 ### Prerequisites
 
