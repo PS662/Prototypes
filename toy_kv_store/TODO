@@ -1,0 +1,4 @@
+1 - Flag driven consistent reads (replica/master toggle)
+2 - range/hash based routing
+3 - UPSERT
+4 - Soft delete
