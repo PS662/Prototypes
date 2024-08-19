@@ -4,8 +4,6 @@ This guide covers setting up multiple MySQL servers using `mysqld_multi`, config
 
 My endgoal was to configure mysql read replicas locally and get IDs from differnt connection objects. 
 
-I have not written to read replicas but there is no reason why you can not do that. 
-
 ## Prerequisites
 
 - MySQL server installed on your system.
