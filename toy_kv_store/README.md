@@ -63,7 +63,7 @@ The purge process removes entries with `expiry < NOW()`, including those marked 
 Start the application with:
 
 ```bash
-go run main.go
+go run kv_store.go
 ```
 
 By default, the server runs on port `8080`. You can interact with the API using the provided endpoints.
