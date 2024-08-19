@@ -20,7 +20,7 @@ REPLICA_PASSWORD=$4
 DB_DIR=$5
 
 # Optional Arguments with Defaults
-MAX_WAL_SENDERS=${6:-3}  # Default value: 3
+MAX_WAL_SENDERS=${6:-10}  # Default value: 10
 WAL_KEEP_SIZE=${7:-64MB} # Default value: 64MB
 
 POSTGRES_CONF="${DB_DIR}/postgresql.conf"

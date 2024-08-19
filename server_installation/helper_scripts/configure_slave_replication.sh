@@ -10,6 +10,7 @@ REPLICA_PORT=$4
 REPLICA_USER=$5
 REPLICA_PASSWORD=$6
 REPLICA_DATA_DIR=$7
+MAX_WAL_SENDERS=${8:-10}
 
 if [ "$EUID" -ne 0 ]; then
   echo "Please run as root"
@@ -41,7 +42,7 @@ echo "primary_conninfo = 'host=${MASTER_IP} port=${MASTER_PORT} user=${REPLICA_U
 echo "primary_slot_name = 'replica_slot'" >> $REPLICA_CONF
 echo "hot_standby = on" >> $REPLICA_CONF
 echo "wal_level = replica" >> $REPLICA_CONF  # Ensure WAL level is set to replica on the replica as well
-echo "max_wal_senders = 5" >> $REPLICA_CONF  # Set a higher number to avoid any WAL streaming issues
+echo "max_wal_senders = ${MAX_WAL_SENDERS}" >> $REPLICA_CONF  # Set a higher number to avoid any WAL streaming issues
 
 # Step 6: Start the replica server
 sudo -u postgres /usr/lib/postgresql/14/bin/pg_ctl -D $REPLICA_DATA_DIR -l ${REPLICA_DATA_DIR}/logfile start
