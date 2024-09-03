@@ -13,5 +13,6 @@ $(TARGET):
 clean:
 	rm -f $(TARGET)
 	rm -f *.bitcask
+	rm -f *.config
 
 .PHONY: all clean
