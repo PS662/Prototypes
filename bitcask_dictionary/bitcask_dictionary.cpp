@@ -16,6 +16,7 @@ std::string dictPath;
 std::string version;
 std::string configPath = "dictionary.config";
 
+#pragma pack(push, 1)
 struct BitcaskHeader
 {
     uint32_t version;     // Version number
@@ -23,7 +24,7 @@ struct BitcaskHeader
     uint64_t dataOffset;  // Offset where the data section starts
     uint32_t entryCount;  // Number of entries in the dictionary
 
-    void writeToFile(std::ofstream &out)
+    void WriteToFile(std::ofstream &out)
     {
         out.write(reinterpret_cast<const char *>(&version), sizeof(version));
         out.write(reinterpret_cast<const char *>(&indexOffset), sizeof(indexOffset));
@@ -31,7 +32,7 @@ struct BitcaskHeader
         out.write(reinterpret_cast<const char *>(&entryCount), sizeof(entryCount));
     }
 
-    void readFromFile(std::ifstream &in)
+    void ReadFromFile(std::ifstream &in)
     {
         in.read(reinterpret_cast<char *>(&version), sizeof(version));
         in.read(reinterpret_cast<char *>(&indexOffset), sizeof(indexOffset));
@@ -39,9 +40,10 @@ struct BitcaskHeader
         in.read(reinterpret_cast<char *>(&entryCount), sizeof(entryCount));
     }
 };
+#pragma pack(pop)
 
 // Function to calculate a simple checksum
-uint32_t calculateChecksum(const std::string &data)
+uint32_t CalculateChecksum(const std::string &data)
 {
     uint32_t checksum = 0;
     for (char c : data)
@@ -52,9 +54,9 @@ uint32_t calculateChecksum(const std::string &data)
 }
 
 // Helper function to write a Bitcask entry
-void writeBitcaskEntry(std::ofstream &out, const std::string &word, const std::string &meaning)
+void WriteBitcaskEntry(std::ofstream &out, const std::string &word, const std::string &meaning)
 {
-    uint32_t checksum = calculateChecksum(word + meaning);
+    uint32_t checksum = CalculateChecksum(word + meaning);
     uint32_t wordSize = word.size();
     uint32_t meaningSize = meaning.size();
 
@@ -75,55 +77,7 @@ void writeBitcaskEntry(std::ofstream &out, const std::string &word, const std::s
     std::cout << "Write meaning for word: '" << word << "', size: " << meaningSize << " bytes\n";
 }
 
-// Helper function to read a Bitcask entry
-bool readBitcaskEntry(std::ifstream &in, std::string &word, std::string &meaning)
-{
-    uint32_t checksum, wordSize, meaningSize;
-
-    // Read the checksum, word size, and meaning size
-    if (!in.read(reinterpret_cast<char *>(&checksum), sizeof(checksum)))
-    {
-        std::cerr << "Error reading checksum." << std::endl;
-        return false;
-    }
-    std::cout << "Read checksum (" << checksum << "), size: " << sizeof(checksum) << " bytes\n";
-
-    if (!in.read(reinterpret_cast<char *>(&wordSize), sizeof(wordSize)))
-    {
-        std::cerr << "Error reading word size." << std::endl;
-        return false;
-    }
-    std::cout << "Read word size (" << wordSize << "), size: " << sizeof(wordSize) << " bytes\n";
-
-    if (!in.read(reinterpret_cast<char *>(&meaningSize), sizeof(meaningSize)))
-    {
-        std::cerr << "Error reading meaning size." << std::endl;
-        return false;
-    }
-    std::cout << "Read meaning size (" << meaningSize << "), size: " << sizeof(meaningSize) << " bytes\n";
-
-    // Read the word and meaning based on the sizes read
-    word.resize(wordSize);
-    if (!in.read(&word[0], wordSize))
-    {
-        std::cerr << "Error reading word." << std::endl;
-        return false;
-    }
-    std::cout << "Read word: '" << word << "', size: " << wordSize << " bytes\n";
-
-    meaning.resize(meaningSize);
-    if (!in.read(&meaning[0], meaningSize))
-    {
-        std::cerr << "Error reading meaning." << std::endl;
-        return false;
-    }
-    std::cout << "Read meaning for word: '" << word << "', size: " << meaningSize << " bytes\n";
-
-    return true;
-}
-
-
-void createDictionary(const std::string &csvFilePath, const std::string &bitcaskFilePath)
+void CreateDictionary(const std::string &csvFilePath, const std::string &bitcaskFilePath)
 {
     std::ifstream inFile(csvFilePath);
     std::ofstream outFile(bitcaskFilePath, std::ios::binary);
@@ -131,9 +85,13 @@ void createDictionary(const std::string &csvFilePath, const std::string &bitcask
     BitcaskHeader header = {static_cast<uint32_t>(std::stoi(version)), 0, 0, 0}; // Initialize header with defaults
     outFile.seekp(sizeof(BitcaskHeader));                                        // Reserve space for the header
 
+    std::cout << "Reserved space for header: " << sizeof(BitcaskHeader) << " bytes\n";
+
     std::string line;
     std::vector<std::pair<std::string, uint64_t>> index; // For storing index entries
     uint64_t dataStart = outFile.tellp();
+
+    std::cout << "Data section starts at offset: " << dataStart << "\n";
 
     // Read the CSV and write data entries
     while (std::getline(inFile, line))
@@ -142,13 +100,17 @@ void createDictionary(const std::string &csvFilePath, const std::string &bitcask
         std::string word, meaning;
         if (std::getline(ss, word, ',') && std::getline(ss, meaning))
         {
-            index.push_back({word, static_cast<uint64_t>(outFile.tellp())}); // Store the index
-            writeBitcaskEntry(outFile, word, meaning);
+            uint64_t currentOffset = static_cast<uint64_t>(outFile.tellp());
+            index.push_back({word, currentOffset}); // Store the index
+            std::cout << "Writing entry for word: '" << word << "' at offset: " << currentOffset << "\n";
+            WriteBitcaskEntry(outFile, word, meaning);
             header.entryCount++;
         }
     }
 
     uint64_t indexStart = outFile.tellp();
+    std::cout << "Index section starts at offset: " << indexStart << "\n";
+
     // Write the index section
     for (const auto &entry : index)
     {
@@ -156,19 +118,89 @@ void createDictionary(const std::string &csvFilePath, const std::string &bitcask
         outFile.write(reinterpret_cast<const char *>(&wordSize), sizeof(wordSize));
         outFile.write(entry.first.c_str(), wordSize);
         outFile.write(reinterpret_cast<const char *>(&entry.second), sizeof(entry.second)); // Offset
+        std::cout << "Index entry for word: '" << entry.first << "', offset: " << entry.second << "\n";
     }
 
     // Update header with correct offsets
     header.indexOffset = indexStart;
     header.dataOffset = dataStart;
     outFile.seekp(0); // Go back to the start to write the header
-    header.writeToFile(outFile);
+    header.WriteToFile(outFile);
+
+    std::cout << "Header updated with data offset: " << header.dataOffset
+              << ", index offset: " << header.indexOffset
+              << ", entry count: " << header.entryCount << "\n";
 
     inFile.close();
     outFile.close();
 }
 
-std::pair<uint64_t, uint32_t> findWordInBitcask(const std::string &word, std::ifstream &inFile, const BitcaskHeader &header)
+void ReadDictionary(const std::string &bitcaskFilePath)
+{
+    std::ifstream inFile(bitcaskFilePath, std::ios::binary);
+    if (!inFile)
+    {
+        std::cerr << "Failed to open file: " << bitcaskFilePath << "\n";
+        return;
+    }
+
+    // Read the header
+    BitcaskHeader header;
+    header.ReadFromFile(inFile);
+
+    std::cout << "Read Header:\n";
+    std::cout << "  Version: " << header.version << "\n";
+    std::cout << "  Entry Count: " << header.entryCount << "\n";
+    std::cout << "  Data Offset: " << header.dataOffset << "\n";
+    std::cout << "  Index Offset: " << header.indexOffset << "\n";
+
+    // Read and process each index entry without loading them into memory
+    inFile.seekg(header.indexOffset); // Move to the index section
+    std::cout << "Reading Index Entries and Corresponding Data:\n";
+
+    for (uint32_t i = 0; i < header.entryCount; ++i)
+    {
+        uint32_t wordSize;
+        inFile.read(reinterpret_cast<char *>(&wordSize), sizeof(wordSize));
+
+        std::string word(wordSize, '\0');
+        inFile.read(&word[0], wordSize);
+
+        uint64_t offset;
+        inFile.read(reinterpret_cast<char *>(&offset), sizeof(offset));
+
+        std::cout << "  Index Entry: Word: '" << word << "', Offset: " << offset << "\n";
+
+        // Now read the data entry at the given offset
+        std::streampos currentPos = inFile.tellg(); // Save current position
+        inFile.seekg(offset);                       // Move to the word's data section
+
+        uint32_t checksum;
+        inFile.read(reinterpret_cast<char *>(&checksum), sizeof(checksum));
+
+        uint32_t wordSizeInData;
+        inFile.read(reinterpret_cast<char *>(&wordSizeInData), sizeof(wordSizeInData));
+
+        uint32_t meaningSize;
+        inFile.read(reinterpret_cast<char *>(&meaningSize), sizeof(meaningSize));
+
+        std::string wordInData(wordSizeInData, '\0');
+        inFile.read(&wordInData[0], wordSizeInData);
+
+        std::string meaning(meaningSize, '\0');
+        inFile.read(&meaning[0], meaningSize);
+
+        std::cout << "  Data Entry: Word: '" << wordInData << "', Checksum: " << checksum << "\n";
+        std::cout << "  Meaning: '" << meaning << "'\n";
+        std::cout << "  Word Size: " << wordSizeInData << ", Meaning Size: " << meaningSize << "\n";
+
+        inFile.seekg(currentPos); // Return to the position after reading the index entry
+    }
+
+    inFile.close();
+}
+
+std::pair<uint64_t, uint32_t> FindWordInBitcask(const std::string &word, std::ifstream &inFile, const BitcaskHeader &header)
 {
     // Go to the index section as specified by the header
     inFile.seekg(header.indexOffset);
@@ -200,7 +232,7 @@ std::pair<uint64_t, uint32_t> findWordInBitcask(const std::string &word, std::if
         // Compare the stored word with the search word
         if (storedWord == word)
         {
-           // Read data offset
+            // Read data offset
             uint64_t dataOffset;
             inFile.read(reinterpret_cast<char *>(&dataOffset), sizeof(dataOffset));
             if (inFile.fail())
@@ -245,7 +277,7 @@ std::pair<uint64_t, uint32_t> findWordInBitcask(const std::string &word, std::if
     return {0, 0}; // Not found
 }
 
-void searchWord(const std::string &word, const std::string &searchDictPath)
+void SearchWord(const std::string &word, const std::string &searchDictPath)
 {
     std::ifstream inFile(searchDictPath, std::ios::binary);
     if (!inFile.is_open())
@@ -255,9 +287,9 @@ void searchWord(const std::string &word, const std::string &searchDictPath)
     }
 
     BitcaskHeader header;
-    header.readFromFile(inFile); // Read the header to get index and data offsets
+    header.ReadFromFile(inFile); // Read the header to get index and data offsets
 
-    auto [pos, meaningSize] = findWordInBitcask(word, inFile, header);
+    auto [pos, meaningSize] = FindWordInBitcask(word, inFile, header);
     if (pos != 0)
     {
         inFile.seekg(pos); // Go to meaning position
@@ -273,7 +305,7 @@ void searchWord(const std::string &word, const std::string &searchDictPath)
     inFile.close();
 }
 
-void mergeDictionary(const std::string &dict1Path, const std::string &dict2Path, const std::string &outputDictPath)
+void MergeDictionary(const std::string &dict1Path, const std::string &dict2Path, const std::string &outputDictPath)
 {
     std::ifstream dict1(dict1Path, std::ios::binary);
     std::ifstream dict2(dict2Path, std::ios::binary);
@@ -287,50 +319,190 @@ void mergeDictionary(const std::string &dict1Path, const std::string &dict2Path,
 
     // Read headers from both dictionaries
     BitcaskHeader header1, header2;
-    header1.readFromFile(dict1);
-    header2.readFromFile(dict2);
+    header1.ReadFromFile(dict1);
+    header2.ReadFromFile(dict2);
 
     // Reserve space for the header in the merged file
-    BitcaskHeader mergedHeader = {static_cast<uint32_t>(std::stoi(version) + 1), 0, 0, 0};
-    mergedFile.seekp(sizeof(BitcaskHeader)); // Reserve space for header
+    BitcaskHeader mergedHeader = {header1.version + 1, 0, 0, 0}; // Increment version for the merged dictionary
+    mergedFile.seekp(sizeof(BitcaskHeader));                     // Reserve space for the header
     std::cout << "Reserved space for header: " << sizeof(BitcaskHeader) << " bytes" << std::endl;
 
-    std::vector<std::pair<std::string, uint64_t>> index; // For storing index entries
-    uint64_t dataStart = mergedFile.tellp();             // Data section start
+    uint64_t dataStart = mergedFile.tellp(); // Data section start
     std::cout << "Data section starts at: " << dataStart << std::endl;
 
-    // Initialize reading from the data sections of both dictionaries
-    dict1.seekg(header1.dataOffset);
-    dict2.seekg(header2.dataOffset);
+    // Set up reading from the index sections of both dictionaries
+    dict1.seekg(header1.indexOffset);
+    dict2.seekg(header2.indexOffset);
 
-    std::string word1, meaning1, word2, meaning2;
-    bool valid1 = readBitcaskEntry(dict1, word1, meaning1);
-    bool valid2 = readBitcaskEntry(dict2, word2, meaning2);
+    // Storage for the merged index
+    std::vector<std::pair<std::string, uint64_t>> index;
 
-    // Merge both dictionaries line by line
+    // Read the first entries from both dictionaries
+    std::string word1, word2;
+    uint64_t offset1 = 0, offset2 = 0;
+    bool valid1 = header1.entryCount > 0; // Flags to check validity
+    bool valid2 = header2.entryCount > 0;
+
+    if (valid1)
+    {
+        uint32_t wordSize1;
+        dict1.read(reinterpret_cast<char *>(&wordSize1), sizeof(wordSize1));
+        word1.resize(wordSize1);
+        dict1.read(&word1[0], wordSize1);
+        dict1.read(reinterpret_cast<char *>(&offset1), sizeof(offset1));
+        valid1 = dict1.good();
+    }
+
+    if (valid2)
+    {
+        uint32_t wordSize2;
+        dict2.read(reinterpret_cast<char *>(&wordSize2), sizeof(wordSize2));
+        word2.resize(wordSize2);
+        dict2.read(&word2[0], wordSize2);
+        dict2.read(reinterpret_cast<char *>(&offset2), sizeof(offset2));
+        valid2 = dict2.good();
+    }
+
+    // Continue reading while at least one dictionary has valid entries
     while (valid1 || valid2)
     {
-        if (valid1 && (!valid2 || word1 < word2))
+        if (valid1 && (!valid2 || (valid2 && word1 < word2)))
         {
-            // Write the entry from the first dictionary directly
-            index.push_back({word1, static_cast<uint64_t>(mergedFile.tellp())});
-            writeBitcaskEntry(mergedFile, word1, meaning1);
-            valid1 = readBitcaskEntry(dict1, word1, meaning1);
+            // Write the entry from the first dictionary
+            uint64_t currentOffset = mergedFile.tellp(); // Store the current offset before writing
+            std::streampos currentPos = dict1.tellg();   // Save current position
+            dict1.seekg(offset1);                        // Move to the word's data section in dict1
+
+            uint32_t checksum, wordSize, meaningSize;
+            dict1.read(reinterpret_cast<char *>(&checksum), sizeof(checksum));
+            dict1.read(reinterpret_cast<char *>(&wordSize), sizeof(wordSize));
+            dict1.read(reinterpret_cast<char *>(&meaningSize), sizeof(meaningSize));
+
+            std::string word(wordSize, '\0');
+            std::string meaning(meaningSize, '\0');
+            dict1.read(&word[0], wordSize);
+            dict1.read(&meaning[0], meaningSize);
+
+            mergedFile.write(reinterpret_cast<const char *>(&checksum), sizeof(checksum));
+            mergedFile.write(reinterpret_cast<const char *>(&wordSize), sizeof(wordSize));
+            mergedFile.write(reinterpret_cast<const char *>(&meaningSize), sizeof(meaningSize));
+            mergedFile.write(word.c_str(), wordSize);
+            mergedFile.write(meaning.c_str(), meaningSize);
+
+            // Store the index entry in memory
+            index.push_back({word1, currentOffset});
+            mergedHeader.entryCount++;
+
+            dict1.seekg(currentPos); // Return to position after reading the index entry
+            uint32_t wordSize1;
+            if (dict1.read(reinterpret_cast<char *>(&wordSize1), sizeof(wordSize1)))
+            {
+                word1.resize(wordSize1);
+                dict1.read(&word1[0], wordSize1);
+                dict1.read(reinterpret_cast<char *>(&offset1), sizeof(offset1));
+                valid1 = dict1.good();
+            }
+            else
+            {
+                valid1 = false; // No more entries in dict1
+            }
         }
-        else if (valid2 && (!valid1 || word2 < word1))
+        else if (valid2 && (!valid1 || (valid1 && word2 < word1)))
         {
-            // Write the entry from the second dictionary directly
-            index.push_back({word2, static_cast<uint64_t>(mergedFile.tellp())});
-            writeBitcaskEntry(mergedFile, word2, meaning2);
-            valid2 = readBitcaskEntry(dict2, word2, meaning2);
+            // Write the entry from the second dictionary
+            uint64_t currentOffset = mergedFile.tellp(); // Store the current offset before writing
+            std::streampos currentPos = dict2.tellg();   // Save current position
+            dict2.seekg(offset2);                        // Move to the word's data section in dict2
+
+            uint32_t checksum, wordSize, meaningSize;
+            dict2.read(reinterpret_cast<char *>(&checksum), sizeof(checksum));
+            dict2.read(reinterpret_cast<char *>(&wordSize), sizeof(wordSize));
+            dict2.read(reinterpret_cast<char *>(&meaningSize), sizeof(meaningSize));
+
+            std::string word(wordSize, '\0');
+            std::string meaning(meaningSize, '\0');
+            dict2.read(&word[0], wordSize);
+            dict2.read(&meaning[0], meaningSize);
+
+            mergedFile.write(reinterpret_cast<const char *>(&checksum), sizeof(checksum));
+            mergedFile.write(reinterpret_cast<const char *>(&wordSize), sizeof(wordSize));
+            mergedFile.write(reinterpret_cast<const char *>(&meaningSize), sizeof(meaningSize));
+            mergedFile.write(word.c_str(), wordSize);
+            mergedFile.write(meaning.c_str(), meaningSize);
+
+            // Store the index entry in memory
+            index.push_back({word2, currentOffset});
+            mergedHeader.entryCount++;
+
+            dict2.seekg(currentPos); // Return to position after reading the index entry
+            uint32_t wordSize2;
+            if (dict2.read(reinterpret_cast<char *>(&wordSize2), sizeof(wordSize2)))
+            {
+                word2.resize(wordSize2);
+                dict2.read(&word2[0], wordSize2);
+                dict2.read(reinterpret_cast<char *>(&offset2), sizeof(offset2));
+                valid2 = dict2.good();
+            }
+            else
+            {
+                valid2 = false; // No more entries in dict2
+            }
         }
         else if (valid1 && valid2 && word1 == word2)
         {
             // Replace the entry from the first dictionary with the second dictionary's entry
-            index.push_back({word2, static_cast<uint64_t>(mergedFile.tellp())});
-            writeBitcaskEntry(mergedFile, word2, meaning2);
-            valid1 = readBitcaskEntry(dict1, word1, meaning1);
-            valid2 = readBitcaskEntry(dict2, word2, meaning2);
+            uint64_t currentOffset = mergedFile.tellp();    // Store the current offset before writing
+            std::streampos currentPosDict1 = dict1.tellg(); // Save current position in dict1
+            std::streampos currentPosDict2 = dict2.tellg(); // Save current position in dict2
+            dict2.seekg(offset2);                           // Prefer the second dictionary's data
+
+            uint32_t checksum, wordSize, meaningSize;
+            dict2.read(reinterpret_cast<char *>(&checksum), sizeof(checksum));
+            dict2.read(reinterpret_cast<char *>(&wordSize), sizeof(wordSize));
+            dict2.read(reinterpret_cast<char *>(&meaningSize), sizeof(meaningSize));
+
+            std::string word(wordSize, '\0');
+            std::string meaning(meaningSize, '\0');
+            dict2.read(&word[0], wordSize);
+            dict2.read(&meaning[0], meaningSize);
+
+            mergedFile.write(reinterpret_cast<const char *>(&checksum), sizeof(checksum));
+            mergedFile.write(reinterpret_cast<const char *>(&wordSize), sizeof(wordSize));
+            mergedFile.write(reinterpret_cast<const char *>(&meaningSize), sizeof(meaningSize));
+            mergedFile.write(word.c_str(), wordSize);
+            mergedFile.write(meaning.c_str(), meaningSize);
+
+            // Store the index entry in memory
+            index.push_back({word2, currentOffset});
+            mergedHeader.entryCount++;
+
+            dict1.seekg(currentPosDict1); // Return to position after reading the index entry in dict1
+            dict2.seekg(currentPosDict2); // Return to position after reading the index entry in dict2
+
+            uint32_t wordSize1, wordSize2;
+            if (dict1.read(reinterpret_cast<char *>(&wordSize1), sizeof(wordSize1)))
+            {
+                word1.resize(wordSize1);
+                dict1.read(&word1[0], wordSize1);
+                dict1.read(reinterpret_cast<char *>(&offset1), sizeof(offset1));
+                valid1 = dict1.good();
+            }
+            else
+            {
+                valid1 = false; // No more entries in dict1
+            }
+
+            if (dict2.read(reinterpret_cast<char *>(&wordSize2), sizeof(wordSize2)))
+            {
+                word2.resize(wordSize2);
+                dict2.read(&word2[0], wordSize2);
+                dict2.read(reinterpret_cast<char *>(&offset2), sizeof(offset2));
+                valid2 = dict2.good();
+            }
+            else
+            {
+                valid2 = false; // No more entries in dict2
+            }
         }
     }
 
@@ -352,9 +524,9 @@ void mergeDictionary(const std::string &dict1Path, const std::string &dict2Path,
     mergedHeader.dataOffset = dataStart;
     mergedHeader.entryCount = static_cast<uint32_t>(index.size());
     mergedFile.seekp(0);
-    mergedHeader.writeToFile(mergedFile);
-    std::cout << "Header written with index offset: " << mergedHeader.indexOffset 
-              << ", data offset: " << mergedHeader.dataOffset 
+    mergedHeader.WriteToFile(mergedFile);
+    std::cout << "Header written with index offset: " << mergedHeader.indexOffset
+              << ", data offset: " << mergedHeader.dataOffset
               << ", entry count: " << mergedHeader.entryCount << std::endl;
 
     dict1.close();
@@ -373,9 +545,8 @@ void mergeDictionary(const std::string &dict1Path, const std::string &dict2Path,
     std::cout << "Entries Merged: " << mergedHeader.entryCount << std::endl;
 }
 
-
 // Merges two large CSV files line by line, replacing old meanings with new ones
-void mergeCSV(const std::string &csvFile1, const std::string &csvFile2, const std::string &outputCSV)
+void MergeCSV(const std::string &csvFile1, const std::string &csvFile2, const std::string &outputCSV)
 {
     std::ifstream file1(csvFile1);
     std::ifstream file2(csvFile2);
@@ -433,7 +604,7 @@ void mergeCSV(const std::string &csvFile1, const std::string &csvFile2, const st
 }
 
 // Function to write the default configuration file
-void createDefaultConfig()
+void CreateDefaultConfig()
 {
     dictPath = "dictionary_1.bitcask";
     version = "1";
@@ -457,7 +628,7 @@ int main(int argc, char *argv[])
     else
     {
         std::cerr << "Config file not found. Creating default config.\n";
-        createDefaultConfig(); // Create default config if not present
+        CreateDefaultConfig(); // Create default config if not present
     }
 
     if (argc < 2)
@@ -471,20 +642,25 @@ int main(int argc, char *argv[])
     {
         // Use output path from command line if provided, otherwise use config path
         std::string outputPath = (argc == 4) ? argv[3] : dictPath;
-        createDictionary(argv[2], outputPath);
+        CreateDictionary(argv[2], outputPath);
     }
     else if (command == "--search" && (argc == 3 || argc == 4))
     {
         std::string searchDictPath = (argc == 4) ? argv[3] : dictPath;
-        searchWord(argv[2], searchDictPath);
+        SearchWord(argv[2], searchDictPath);
     }
     else if (command == "--merge-csv" && argc == 5)
     {
-        mergeCSV(argv[2], argv[3], argv[4]);
+        MergeCSV(argv[2], argv[3], argv[4]);
     }
     else if (command == "--merge-dict" && argc == 5)
     {
-        mergeDictionary(argv[2], argv[3], argv[4]);
+        MergeDictionary(argv[2], argv[3], argv[4]);
+    }
+    else if (command == "--read-dict" && (argc == 2 || argc == 3))
+    {
+        std::string readDictPath = (argc == 3) ? argv[2] : dictPath;
+        ReadDictionary(readDictPath);
     }
     else
     {
