@@ -1,6 +1,6 @@
 # Go Database Connection Pool Benchmark
 
-This project includes Go code to benchmark database operations using pooled and non-pooled connections. It utilizes MySQL as the backend database.
+Go code to benchmark database operations using pooled and non-pooled connections. It utilizes MySQL as the backend database.
 
 ## Prerequisites
 
