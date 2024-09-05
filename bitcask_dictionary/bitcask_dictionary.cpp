@@ -215,6 +215,7 @@ std::pair<uint64_t, uint32_t> FindWordInBitcask(const std::string &word, std::if
         if (inFile.fail())
         {
             std::cerr << "Error reading word size from index." << std::endl;
+            inFile.clear();
             break;
         }
 
@@ -224,6 +225,17 @@ std::pair<uint64_t, uint32_t> FindWordInBitcask(const std::string &word, std::if
         if (inFile.fail())
         {
             std::cerr << "Error reading word from index." << std::endl;
+            inFile.clear();
+            break;
+        }
+
+        // Read data offset regardless of word match to maintain stream position correctly
+        uint64_t dataOffset;
+        inFile.read(reinterpret_cast<char *>(&dataOffset), sizeof(dataOffset));
+        if (inFile.fail())
+        {
+            std::cerr << "Error reading data offset from index." << std::endl;
+            inFile.clear(); // Clear the error state
             break;
         }
 
@@ -232,14 +244,6 @@ std::pair<uint64_t, uint32_t> FindWordInBitcask(const std::string &word, std::if
         // Compare the stored word with the search word
         if (storedWord == word)
         {
-            // Read data offset
-            uint64_t dataOffset;
-            inFile.read(reinterpret_cast<char *>(&dataOffset), sizeof(dataOffset));
-            if (inFile.fail())
-            {
-                std::cerr << "Error reading data offset from index." << std::endl;
-                break;
-            }
             // Seek directly to the data offset found in the index entry
             inFile.seekg(dataOffset, std::ios::beg);
             if (!inFile)
@@ -295,7 +299,14 @@ void SearchWord(const std::string &word, const std::string &searchDictPath)
         inFile.seekg(pos); // Go to meaning position
         std::string meaning(meaningSize, '\0');
         inFile.read(&meaning[0], meaningSize);
-        std::cout << word << ": " << meaning << std::endl;
+        if (inFile.fail())
+        {
+            std::cerr << "Error reading meaning from data section." << std::endl;
+        }
+        else
+        {
+            std::cout << word << ": " << meaning << std::endl;
+        }
     }
     else
     {

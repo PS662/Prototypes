@@ -5,13 +5,18 @@ TARGET = bitcask_dictionary
 
 SRC = bitcask_dictionary.cpp
 
+OBJ = $(SRC:.cpp=.o)
+
 all: $(TARGET)
 
-$(TARGET):
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(SRC)
+$(TARGET): $(OBJ)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJ)
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) $(OBJ)
 	rm -f *.bitcask
 	rm -f *.config
 
