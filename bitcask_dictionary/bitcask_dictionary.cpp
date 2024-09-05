@@ -644,7 +644,7 @@ int main(int argc, char *argv[])
 
     if (argc < 2)
     {
-        std::cerr << "Usage: " << argv[0] << " --create-dict <csv> <output_path> | --search <word> | --update-dict <bitcask>\n";
+        std::cerr << "Usage: " << argv[0] << " --create-dict <csv> [output_path] | --search <word> [dict_path] | --update-dict <bitcask> | --merge-csv <csv1> <csv2> <output_csv> | --merge-dict <dict1> <dict2> <output_path> | --read-dict [dict_path]\n";
         return 1;
     }
 
