@@ -55,6 +55,23 @@ To read and print all entries from a dictionary:
 ```bash
 ./bitcask_dictionary --read-dict dictionary_1.bitcask
 ```
+## Fast Read
+
+To read and search you can use --fast-read flag. This loads the index in memory, this will considerably increase the lookup time.
+
+This matters when you have large index size.
+
+```
+./bitcask_dictionary --search "banana"
+Time taken to search dictionary: 0.000035 seconds.
+banana: A long curved fruit with a yellow skin and soft, sweet, white flesh inside
+
+./bitcask_dictionary --search "banana" --fast-read
+Index loaded into memory with 57 entries.
+Fast read mode enabled and index loaded from: dictionary_2.bitcask
+Time taken to search dictionary: 0.000019 seconds.
+banana: A long curved fruit with a yellow skin and soft, sweet, white flesh inside
+```
 
 ## CSV Helper Operations
 

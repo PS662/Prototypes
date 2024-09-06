@@ -4,17 +4,17 @@
 #include <vector>
 #include <map>
 #include <string>
-#include <mutex>
-#include <atomic>
 #include <filesystem>
-#include <condition_variable>
 #include <csignal>
 #include <iomanip>
 #include <algorithm>
+#include <chrono>
 
 std::string dictPath;
 std::string version;
 std::string configPath = "dictionary.config";
+std::unordered_map<std::string, uint64_t> inMemoryIndex;
+bool fastRead = false;
 
 #pragma pack(push, 1)
 struct BitcaskHeader
@@ -135,6 +135,37 @@ void CreateDictionary(const std::string &csvFilePath, const std::string &bitcask
     outFile.close();
 }
 
+void LoadIndex(const std::string &dictPath)
+{
+    std::ifstream inFile(dictPath, std::ios::binary);
+    if (!inFile.is_open())
+    {
+        std::cerr << "Failed to open dictionary file" << dictPath << "for index loading." << std::endl;
+        return;
+    }
+
+    BitcaskHeader header;
+    header.ReadFromFile(inFile); // Read the header to get index offset and entry count
+    inFile.seekg(header.indexOffset);
+
+    for (uint32_t i = 0; i < header.entryCount; ++i)
+    {
+        uint32_t wordSize;
+        inFile.read(reinterpret_cast<char *>(&wordSize), sizeof(wordSize));
+
+        std::string storedWord(wordSize, '\0');
+        inFile.read(&storedWord[0], wordSize);
+
+        uint64_t dataOffset;
+        inFile.read(reinterpret_cast<char *>(&dataOffset), sizeof(dataOffset));
+
+        inMemoryIndex[storedWord] = dataOffset;
+    }
+
+    inFile.close();
+    std::cout << "Index loaded into memory with " << inMemoryIndex.size() << " entries." << std::endl;
+}
+
 void ReadDictionary(const std::string &bitcaskFilePath)
 {
     std::ifstream inFile(bitcaskFilePath, std::ios::binary);
@@ -143,6 +174,8 @@ void ReadDictionary(const std::string &bitcaskFilePath)
         std::cerr << "Failed to open file: " << bitcaskFilePath << "\n";
         return;
     }
+
+    auto start = std::chrono::high_resolution_clock::now(); // Start timing
 
     // Read the header
     BitcaskHeader header;
@@ -154,57 +187,140 @@ void ReadDictionary(const std::string &bitcaskFilePath)
     std::cout << "  Data Offset: " << header.dataOffset << "\n";
     std::cout << "  Index Offset: " << header.indexOffset << "\n";
 
-    // Read and process each index entry without loading them into memory
-    inFile.seekg(header.indexOffset); // Move to the index section
-    std::cout << "Reading Index Entries and Corresponding Data:\n";
-
-    for (uint32_t i = 0; i < header.entryCount; ++i)
+    // If fastRead is enabled, load the index into memory using the global variable
+    if (fastRead)
     {
-        uint32_t wordSize;
-        inFile.read(reinterpret_cast<char *>(&wordSize), sizeof(wordSize));
+        std::cout << "Using fastRead mode. Reading index from memory.\n";
+        if (inMemoryIndex.empty())
+        {
+            std::cerr << "Empty Index \n";
+            return;
+        }
 
-        std::string word(wordSize, '\0');
-        inFile.read(&word[0], wordSize);
+        // Iterate over the in-memory index
+        for (const auto &entry : inMemoryIndex)
+        {
+            const std::string &word = entry.first;
+            uint64_t offset = entry.second;
 
-        uint64_t offset;
-        inFile.read(reinterpret_cast<char *>(&offset), sizeof(offset));
+            std::cout << "  Index Entry: Word: '" << word << "', Offset: " << offset << "\n";
 
-        std::cout << "  Index Entry: Word: '" << word << "', Offset: " << offset << "\n";
+            // Now read the data entry at the given offset
+            inFile.seekg(offset); // Move to the word's data section
 
-        // Now read the data entry at the given offset
-        std::streampos currentPos = inFile.tellg(); // Save current position
-        inFile.seekg(offset);                       // Move to the word's data section
+            uint32_t checksum;
+            inFile.read(reinterpret_cast<char *>(&checksum), sizeof(checksum));
 
-        uint32_t checksum;
-        inFile.read(reinterpret_cast<char *>(&checksum), sizeof(checksum));
+            uint32_t wordSizeInData;
+            inFile.read(reinterpret_cast<char *>(&wordSizeInData), sizeof(wordSizeInData));
 
-        uint32_t wordSizeInData;
-        inFile.read(reinterpret_cast<char *>(&wordSizeInData), sizeof(wordSizeInData));
+            uint32_t meaningSize;
+            inFile.read(reinterpret_cast<char *>(&meaningSize), sizeof(meaningSize));
 
-        uint32_t meaningSize;
-        inFile.read(reinterpret_cast<char *>(&meaningSize), sizeof(meaningSize));
+            std::string wordInData(wordSizeInData, '\0');
+            inFile.read(&wordInData[0], wordSizeInData);
 
-        std::string wordInData(wordSizeInData, '\0');
-        inFile.read(&wordInData[0], wordSizeInData);
+            std::string meaning(meaningSize, '\0');
+            inFile.read(&meaning[0], meaningSize);
 
-        std::string meaning(meaningSize, '\0');
-        inFile.read(&meaning[0], meaningSize);
+            std::cout << "  Data Entry: Word: '" << wordInData << "', Checksum: " << checksum << "\n";
+            std::cout << "  Meaning: '" << meaning << "'\n";
+            std::cout << "  Word Size: " << wordSizeInData << ", Meaning Size: " << meaningSize << "\n";
+        }
+    }
+    else
+    {
+        // Read and process each index entry without loading them into memory
+        inFile.seekg(header.indexOffset); // Move to the index section
+        std::cout << "Reading Index Entries and Corresponding Data:\n";
 
-        std::cout << "  Data Entry: Word: '" << wordInData << "', Checksum: " << checksum << "\n";
-        std::cout << "  Meaning: '" << meaning << "'\n";
-        std::cout << "  Word Size: " << wordSizeInData << ", Meaning Size: " << meaningSize << "\n";
+        for (uint32_t i = 0; i < header.entryCount; ++i)
+        {
+            uint32_t wordSize;
+            inFile.read(reinterpret_cast<char *>(&wordSize), sizeof(wordSize));
 
-        inFile.seekg(currentPos); // Return to the position after reading the index entry
+            std::string word(wordSize, '\0');
+            inFile.read(&word[0], wordSize);
+
+            uint64_t offset;
+            inFile.read(reinterpret_cast<char *>(&offset), sizeof(offset));
+
+            std::cout << "  Index Entry: Word: '" << word << "', Offset: " << offset << "\n";
+
+            // Now read the data entry at the given offset
+            std::streampos currentPos = inFile.tellg(); // Save current position
+            inFile.seekg(offset);                       // Move to the word's data section
+
+            uint32_t checksum;
+            inFile.read(reinterpret_cast<char *>(&checksum), sizeof(checksum));
+
+            uint32_t wordSizeInData;
+            inFile.read(reinterpret_cast<char *>(&wordSizeInData), sizeof(wordSizeInData));
+
+            uint32_t meaningSize;
+            inFile.read(reinterpret_cast<char *>(&meaningSize), sizeof(meaningSize));
+
+            std::string wordInData(wordSizeInData, '\0');
+            inFile.read(&wordInData[0], wordSizeInData);
+
+            std::string meaning(meaningSize, '\0');
+            inFile.read(&meaning[0], meaningSize);
+
+            std::cout << "  Data Entry: Word: '" << wordInData << "', Checksum: " << checksum << "\n";
+            std::cout << "  Meaning: '" << meaning << "'\n";
+            std::cout << "  Word Size: " << wordSizeInData << ", Meaning Size: " << meaningSize << "\n";
+
+            inFile.seekg(currentPos); // Return to the position after reading the index entry
+        }
     }
 
+    auto end = std::chrono::high_resolution_clock::now(); // End timing
+    std::chrono::duration<double> elapsed = end - start;
+    std::cout << "Time taken to read dictionary: " << std::fixed << std::setprecision(6) << elapsed.count() << " seconds." << std::endl;
     inFile.close();
 }
 
 std::pair<uint64_t, uint32_t> FindWordInBitcask(const std::string &word, std::ifstream &inFile, const BitcaskHeader &header)
 {
-    // Go to the index section as specified by the header
+    auto start = std::chrono::high_resolution_clock::now();
+
+    if (fastRead)
+    {
+        if (inMemoryIndex.empty())
+        {
+            std::cerr << "Empty Index \n";
+            return {0, 0};
+        }
+        // Use the in-memory index to find the word offset
+        auto it = inMemoryIndex.find(word);
+        if (it != inMemoryIndex.end())
+        {
+            uint64_t dataOffset = it->second;
+            inFile.seekg(dataOffset, std::ios::beg);
+
+            uint32_t checksum, readWordSize, meaningSize;
+            inFile.read(reinterpret_cast<char *>(&checksum), sizeof(checksum));
+            inFile.read(reinterpret_cast<char *>(&readWordSize), sizeof(readWordSize));
+            inFile.read(reinterpret_cast<char *>(&meaningSize), sizeof(meaningSize));
+
+            // Skip reading the word since we already know it
+            inFile.seekg(readWordSize, std::ios::cur);
+
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = end - start;
+            std::cout << "Time taken to search dictionary: " << std::fixed << std::setprecision(6) << elapsed.count() << " seconds." << std::endl;
+
+            return {inFile.tellg(), meaningSize};
+        }
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        std::cout << "Time taken to search dictionary: " << std::fixed << std::setprecision(6) << elapsed.count() << " seconds." << std::endl;
+        std::cout << "Word not found in in-memory index: " << word << std::endl;
+        return {0, 0};
+    }
+
     inFile.seekg(header.indexOffset);
-    std::cout << "Reading index section starting at offset: " << header.indexOffset << std::endl;
+    //std::cout << "Reading index section starting at offset: " << header.indexOffset << std::endl;
 
     // Iterate through each entry in the index section
     for (uint32_t i = 0; i < header.entryCount; ++i)
@@ -239,7 +355,7 @@ std::pair<uint64_t, uint32_t> FindWordInBitcask(const std::string &word, std::if
             break;
         }
 
-        std::cout << "Stored word: '" << storedWord << "' vs. Search word: '" << word << "'" << std::endl;
+        //std::cout << "Stored word: '" << storedWord << "' vs. Search word: '" << word << "'" << std::endl;
 
         // Compare the stored word with the search word
         if (storedWord == word)
@@ -270,14 +386,21 @@ std::pair<uint64_t, uint32_t> FindWordInBitcask(const std::string &word, std::if
                 std::cerr << "Error skipping word data in data section." << std::endl;
                 break;
             }
+            auto end = std::chrono::high_resolution_clock::now(); // End timing
+            std::chrono::duration<double> elapsed = end - start;
+            std::cout << "Time taken to search dictionary: " << std::fixed << std::setprecision(6) << elapsed.count() << " seconds." << std::endl;
 
             // Return the current position (start of the meaning) and the size of the meaning
             return {inFile.tellg(), meaningSize};
         }
     }
 
-    // If the word is not found
-    std::cout << "We finally get here! Word not found: " << word << std::endl;
+    std::cout << "Word not found: " << word << std::endl;
+
+    auto end = std::chrono::high_resolution_clock::now(); // End timing
+    std::chrono::duration<double> elapsed = end - start;
+    std::cout << "Time taken to search dictionary: " << std::fixed << std::setprecision(6) << elapsed.count() << " seconds." << std::endl;
+
     return {0, 0}; // Not found
 }
 
@@ -644,11 +767,43 @@ int main(int argc, char *argv[])
 
     if (argc < 2)
     {
-        std::cerr << "Usage: " << argv[0] << " --create-dict <csv> [output_path] | --search <word> [dict_path] | --update-dict <bitcask> | --merge-csv <csv1> <csv2> <output_csv> | --merge-dict <dict1> <dict2> <output_path> | --read-dict [dict_path]\n";
+        std::cerr << "Usage: " << argv[0] << " --create-dict <csv> [output_path] | --search <word> [dict_path] | --update-dict <bitcask> | --merge-csv <csv1> <csv2> <output_csv> | --merge-dict <dict1> <dict2> <output_path> | --read-dict [dict_path] | --fast-read\n";
         return 1;
     }
 
+    // Check if fastRead flag is present in arguments and adjust argc/argv accordingly
+    std::vector<std::string> args(argv, argv + argc);
+    auto it = std::find(args.begin(), args.end(), "--fast-read");
+    if (it != args.end())
+    {
+        fastRead = true;
+        args.erase(it); // Remove the --fast-read argument
+        argc--;         // Adjust argument count
+    }
+
     std::string command = argv[1];
+
+    if (fastRead && (command == "--search" || command == "--read-dict"))
+    {
+        // Determine the correct path to load the index from
+        std::string dictPathToLoad;
+        if (command == "--search" && (argc == 3 || argc == 4))
+        {
+            dictPathToLoad = (argc == 4) ? argv[3] : dictPath;
+        }
+        else if (command == "--read-dict" && (argc == 2 || argc == 3))
+        {
+            dictPathToLoad = (argc == 3) ? argv[2] : dictPath;
+        }
+
+        // Load index into memory if fastRead is enabled
+        if (!dictPathToLoad.empty())
+        {
+            LoadIndex(dictPathToLoad);
+            std::cout << "Fast read mode enabled and index loaded from: " << dictPathToLoad << std::endl;
+        }
+    }
+
     if (command == "--create-dict" && (argc == 3 || argc == 4))
     {
         // Use output path from command line if provided, otherwise use config path
