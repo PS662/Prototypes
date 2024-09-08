@@ -119,4 +119,4 @@ make clean
 If the configuration file `dictionary.config` is missing, the program will automatically create a default config with a default dictionary path and version number.
 
 ## TODO
-[x] I am doing multiple syscalls to read/write to disk. Add datablock size to index and check the impact.
+- [x] I am doing multiple syscalls to read/write to disk. Add datablock size to index and check the impact.
