@@ -64,13 +64,14 @@ This matters when you have large index size.
 ```
 ./bitcask_dictionary --search "banana"
 Time taken to search dictionary: 0.000035 seconds.
-banana: A long curved fruit with a yellow skin and soft, sweet, white flesh inside
+banana: A long yellow fruit with a soft, sweet interior and a thick peel
 
 ./bitcask_dictionary --search "banana" --fast-read
 Index loaded into memory with 57 entries.
-Fast read mode enabled and index loaded from: dictionary_2.bitcask
-Time taken to search dictionary: 0.000019 seconds.
-banana: A long curved fruit with a yellow skin and soft, sweet, white flesh inside
+Fast read mode enabled and index loaded from: dictionary_3.bitcask
+Time taken to search dictionary: 0.000004 seconds.
+banana: A long yellow fruit with a soft, sweet interior and a thick peel
+
 ```
 
 ## CSV Helper Operations
@@ -118,4 +119,4 @@ make clean
 If the configuration file `dictionary.config` is missing, the program will automatically create a default config with a default dictionary path and version number.
 
 ## TODO
-[ ] I am doing multiple syscalls to read/write to disk. Add datablock size to index and check the impact.
+[x] I am doing multiple syscalls to read/write to disk. Add datablock size to index and check the impact.
