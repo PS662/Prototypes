@@ -57,7 +57,7 @@ To read and print all entries from a dictionary:
 ```
 ## Fast Read
 
-To read and search you can use --fast-read flag. This loads the index in memory, this will considerably increase the lookup time.
+To read and search you can use --fast-read flag. This loads the index in memory, this will considerably increase the lookup speed.
 
 This matters when you have large index size.
 
